@@ -28,7 +28,7 @@ class StaticSiteContractTests(unittest.TestCase):
 
     def test_hero_uses_selected_wording(self):
         self.assertIn('<p class="eyebrow">WHAT’S HAPPENING IN MONTRÉAL</p>', self.html)
-        self.assertIn('<h1>Your next outing<br><em class="moment">starts here.</em></h1>', self.html)
+        self.assertIn('<h1>Find your next<br><em class="moment">Montréal outing.</em></h1>', self.html)
         self.assertRegex(self.css, r"\.moment\{[^}]*white-space:nowrap")
 
     def test_mtl_decoration_is_not_bottom_clipped_and_hides_before_overlap(self):
