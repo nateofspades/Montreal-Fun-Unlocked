@@ -26,8 +26,9 @@ class StaticSiteContractTests(unittest.TestCase):
         self.assertRegex(self.css, r"\.hero-copy>\.hero-description\{[^}]*white-space:nowrap")
         self.assertRegex(self.css, r"\.updated\{[^}]*white-space:nowrap")
 
-    def test_montreal_moment_stays_on_one_line(self):
-        self.assertIn('<em class="moment">Montréal moment.</em>', self.html)
+    def test_hero_uses_selected_wording(self):
+        self.assertIn('<p class="eyebrow">WHAT’S HAPPENING IN MONTRÉAL</p>', self.html)
+        self.assertIn('<h1>Your next outing<br><em class="moment">starts here.</em></h1>', self.html)
         self.assertRegex(self.css, r"\.moment\{[^}]*white-space:nowrap")
 
     def test_mtl_decoration_is_not_bottom_clipped_and_hides_before_overlap(self):
