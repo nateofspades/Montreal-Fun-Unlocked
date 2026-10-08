@@ -102,6 +102,7 @@ function renderCard(event) {
   const status = event.status || 'unknown';
   const ticket = safeUrl(event.ticketUrl);
   const source = safeUrl(event.url);
+  const sourceNames = (event.sources || []).filter(Boolean).map(escapeHtml).join(' · ');
   const age = event.ageRestriction ? `<span>${escapeHtml(event.ageRestriction)}</span>` : '';
   const statusBadge = status === 'sold-out' ? '<span class="badge sold-out">Sold out</span>' : `<span class="badge">${escapeHtml(titleCase(status))}</span>`;
   return `<article class="event-card">
@@ -110,6 +111,7 @@ function renderCard(event) {
     <h2>${escapeHtml(event.title || 'Untitled event')}</h2>
     <p class="venue">${escapeHtml(venue.name || 'Venue unknown')}</p>
     <div class="details">${age}<span>${escapeHtml(event.confidence || '')}</span></div>
+    ${sourceNames ? `<p class="source-line">Source: ${sourceNames}</p>` : ''}
     <div class="links">
       ${ticket ? `<a class="button primary" href="${escapeHtml(ticket)}" target="_blank" rel="noopener">Tickets</a>` : ''}
       ${source ? `<a class="button" href="${escapeHtml(source)}" target="_blank" rel="noopener">Original listing</a>` : ''}
@@ -174,5 +176,5 @@ function initSite() {
   elements.more.addEventListener('click', () => { state.visible += PAGE_SIZE; render(false); });
 }
 
-if (typeof module !== 'undefined') module.exports = {applyFilters, eventTimeLabel, montrealDateKey, datePresetRange};
+if (typeof module !== 'undefined') module.exports = {applyFilters, eventTimeLabel, montrealDateKey, datePresetRange, renderCard};
 if (typeof document !== 'undefined') initSite();

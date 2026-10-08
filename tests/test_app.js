@@ -4,6 +4,7 @@ const {
   eventTimeLabel,
   montrealDateKey,
   datePresetRange,
+  renderCard,
 } = require('../docs/app.js');
 
 const base = {
@@ -15,6 +16,10 @@ const base = {
 assert.equal(eventTimeLabel({...base, startTimeKnown: false}), 'Time not listed');
 assert.match(eventTimeLabel(base), /^9:30 p\.m\.$/i);
 assert.equal(montrealDateKey(base.startsAt), '2026-10-07');
+
+const sourcedCard = renderCard({...base, sources: ['Venue calendar', 'Seller & Co.'], url: 'https://example.test/event'});
+assert.match(sourcedCard, /Source: Venue calendar · Seller &amp; Co\./);
+assert.match(sourcedCard, /Original listing/);
 
 const events = [
   base,
