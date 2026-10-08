@@ -1,0 +1,6 @@
+.cache/
+__pycache__/
+*.py[cod]
+collection-result.json
+validation-report.json
+.DS_Store

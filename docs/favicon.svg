@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Montreal Fun Unlocked">
+  <rect width="64" height="64" rx="16" fill="#17213a"/>
+  <path d="M32 9l4.7 15.3L52 29l-15.3 4.7L32 49l-4.7-15.3L12 29l15.3-4.7L32 9z" fill="#ffc857"/>
+  <circle cx="32" cy="29" r="5" fill="#1f5eff"/>
+</svg>

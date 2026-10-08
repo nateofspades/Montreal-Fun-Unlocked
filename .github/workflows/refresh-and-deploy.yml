@@ -1,0 +1,97 @@
+name: Refresh events and deploy Pages
+
+on:
+  schedule:
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+    inputs:
+      force_refresh:
+        description: 'Collect again even if today already has a successful fixed-EST refresh (use only to correct published data)'
+        required: false
+        type: boolean
+        default: false
+      deploy_only:
+        description: 'Redeploy the existing validated dataset without contacting the source'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: montreal-fun-unlocked-refresh-and-pages
+  cancel-in-progress: false
+
+jobs:
+  refresh-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Run test suite
+        run: |
+          python -m unittest discover -s tests -p 'test_*.py' -v
+          node tests/test_app.js
+
+      - name: Collect all 60-day pages
+        if: ${{ !inputs.deploy_only }}
+        env:
+          FORCE_REFRESH: ${{ inputs.force_refresh }}
+        run: |
+          force_arg=""
+          if [ "$FORCE_REFRESH" = "true" ]; then force_arg="--force"; fi
+          python scripts/collect.py --skip-if-success-today $force_arg --result-file collection-result.json
+
+      - name: Validate data before commit and publication
+        run: |
+          set -o pipefail
+          python scripts/validate.py docs/data | tee validation-report.json
+
+      - name: Commit exactly one successful refresh update
+        if: ${{ !inputs.deploy_only }}
+        run: |
+          refreshed=$(python -c "import json; print(str(json.load(open('collection-result.json'))['refreshed']).lower())")
+          if [ "$refreshed" != "true" ]; then
+            echo "A successful refresh already exists for this fixed-EST calendar day; no additional commit."
+            exit 0
+          fi
+          refresh_date=$(python -c "import json; print(json.load(open('docs/data/metadata.json'))['collectionDateFixedEst'])")
+          git config user.name "nateofspades"
+          git config user.email "33226599+nateofspades@users.noreply.github.com"
+          git add docs/data/events.json docs/data/events.csv docs/data/metadata.json
+          git commit -m "chore(data): refresh events $refresh_date"
+          git push origin HEAD:main
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload validated Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Explain a failed refresh
+        if: ${{ failure() }}
+        run: |
+          echo '## Refresh or deployment failed' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No failed or incomplete collection is committed. The previous dataset and Pages deployment remain recoverable from Git.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Retry with deploy_only to republish existing validated data without recollecting.' >> "$GITHUB_STEP_SUMMARY"

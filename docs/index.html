@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Search upcoming Montréal events, updated daily from Has Things.">
+  <title>Montreal Fun Unlocked</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="hero">
+    <nav class="nav" aria-label="Main navigation">
+      <a class="brand" href="./"><span aria-hidden="true">✦</span> Montreal Fun Unlocked</a>
+      <div class="downloads"><a href="./data/events.json" download>JSON</a><a href="./data/events.csv" download>CSV</a></div>
+    </nav>
+    <div class="hero-copy">
+      <p class="eyebrow">THE CITY, ONE SEARCH AWAY</p>
+      <h1>Find your next<br><em>Montréal moment.</em></h1>
+      <p>Concerts, comedy, cinema, art and more — collected daily and easy to explore.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="filter-panel" aria-label="Event filters">
+      <label class="search-wrap"><span>Search</span><input id="search" type="search" placeholder="Artist, event, venue…" autocomplete="off"></label>
+      <div class="filter-grid">
+        <label><span>Category</span><select id="category"><option value="">All categories</option></select></label>
+        <label><span>Venue</span><select id="venue"><option value="">All venues</option></select></label>
+        <label><span>From</span><input id="from-date" type="date"></label>
+        <label><span>To</span><input id="to-date" type="date"></label>
+      </div>
+      <div class="quick-row" aria-label="Quick date filters">
+        <button data-preset="today">Today</button><button data-preset="tomorrow">Tomorrow</button><button data-preset="weekend">This weekend</button><button id="clear-dates">Any date</button>
+      </div>
+      <div class="toggle-row">
+        <label><input id="include-unavailable" type="checkbox"> Show cancelled &amp; postponed</label>
+        <label><input id="include-past" type="checkbox"> Show past listings</label>
+      </div>
+    </section>
+
+    <section class="results-head">
+      <div><p class="eyebrow">UPCOMING IN MONTRÉAL</p><h2 id="match-count">Loading showtimes…</h2></div>
+      <p id="last-updated" class="updated"></p>
+    </section>
+    <p id="error" class="error" hidden></p>
+    <section id="events" class="event-grid" aria-live="polite"></section>
+    <div class="load-wrap"><button id="load-more" class="load-more" hidden>Load more showtimes</button></div>
+  </main>
+
+  <footer>
+    <div><strong>Montreal Fun Unlocked</strong><p>A public, open-data events explorer.</p></div>
+    <div class="credits"><p><a href="https://montreal.hasthings.com/feeds">Data: Has Things (hasthings.com)</a> · <a href="./data/LICENSE.txt">ODbL 1.0</a></p><p>Times shown in America/Toronto. Event details may change; confirm with the original listing.</p></div>
+  </footer>
+  <script src="./app.js"></script>
+</body>
+</html>
