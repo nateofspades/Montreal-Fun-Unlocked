@@ -13,7 +13,8 @@ class StaticSiteContractTests(unittest.TestCase):
 
     def test_visible_source_label_and_machine_readable_exact_attribution(self):
         self.assertIn('content="Data: Has Things (hasthings.com)"', self.html)
-        self.assertIn('>Data Source: Has Things</a>', self.html)
+        self.assertIn('>Data source: Has Things</a>', self.html)
+        self.assertNotIn('>Data Source: Has Things</a>', self.html)
         self.assertNotIn('aria-label="Data: Has Things (hasthings.com)"', self.html)
         self.assertIn('href="./data/LICENSE.txt"', self.html)
 
@@ -25,9 +26,17 @@ class StaticSiteContractTests(unittest.TestCase):
         self.assertRegex(self.css, r"\.hero-copy>\.hero-description\{[^}]*white-space:nowrap")
         self.assertRegex(self.css, r"\.updated\{[^}]*white-space:nowrap")
 
+    def test_montreal_moment_stays_on_one_line(self):
+        self.assertIn('<em class="moment">Montréal moment.</em>', self.html)
+        self.assertRegex(self.css, r"\.moment\{[^}]*white-space:nowrap")
+
     def test_mtl_decoration_is_not_bottom_clipped_and_hides_before_overlap(self):
-        self.assertRegex(self.css, r"\.hero:after\{[^}]*bottom:(?!-)")
+        self.assertRegex(self.css, r"\.hero:after\{[^}]*bottom:96px")
         self.assertIn("@media(max-width:1100px){.hero:after{display:none}", self.css)
+
+    def test_static_ui_uses_event_wording(self):
+        self.assertIn("Loading events…", self.html)
+        self.assertIn("Load more events", self.html)
 
 
 if __name__ == "__main__":

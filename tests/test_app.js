@@ -5,6 +5,7 @@ const {
   montrealDateKey,
   datePresetRange,
   renderCard,
+  matchingCountLabel,
 } = require('../docs/app.js');
 
 const base = {
@@ -20,6 +21,9 @@ assert.equal(montrealDateKey(base.startsAt), '2026-10-07');
 const sourcedCard = renderCard({...base, sources: ['Venue calendar', 'Seller & Co.'], url: 'https://example.test/event'});
 assert.match(sourcedCard, /Source: Venue calendar · Seller &amp; Co\./);
 assert.match(sourcedCard, /Original listing/);
+assert.equal(matchingCountLabel(0), '0 matching events');
+assert.equal(matchingCountLabel(1), '1 matching event');
+assert.equal(matchingCountLabel(2539), '2,539 matching events');
 
 const events = [
   base,
