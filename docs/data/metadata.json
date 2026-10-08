@@ -1,0 +1,39 @@
+{
+  "title": "Montreal Fun Unlocked",
+  "source": "https://montreal.hasthings.com/api/events",
+  "sourceDocumentation": "https://montreal.hasthings.com/feeds",
+  "lastSuccessfulCollection": "2026-10-08T00:27:21Z",
+  "collectionDateFixedEst": "2026-10-07",
+  "windowFrom": "2026-10-08T00:27:00Z",
+  "windowTo": "2026-12-07T00:27:00Z",
+  "windowDays": 60,
+  "timezone": "America/Toronto",
+  "uniqueShowtimeCount": 2565,
+  "duplicatesRemoved": 0,
+  "pagesRetrieved": 6,
+  "offsetsRetrieved": [
+    0,
+    500,
+    1000,
+    1500,
+    2000,
+    2500
+  ],
+  "reportedTotalsByPage": [
+    501,
+    1001,
+    1501,
+    2001,
+    2501,
+    2565
+  ],
+  "paginationComplete": true,
+  "license": {
+    "name": "ODbL 1.0",
+    "url": "https://opendatacommons.org/licenses/odbl/1-0/",
+    "attribution": "Data: Has Things (hasthings.com)",
+    "shareAlike": true,
+    "terms": "https://montreal.hasthings.com/feeds#license"
+  },
+  "attribution": "Data: Has Things (hasthings.com)"
+}
