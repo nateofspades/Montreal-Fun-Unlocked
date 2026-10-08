@@ -2,7 +2,7 @@
 
 A searchable, mobile-friendly static guide to upcoming Montréal events. The site collects every available showtime in an explicit rolling 60-day window from the paginated Montréal Has Things API, then publishes validated JSON, CSV, and a GitHub Pages interface.
 
-Live site: https://nateofspades.github.io/montreal-fun-unlocked/
+Live site: https://nateofspades.github.io/Montreal-Fun-Unlocked/
 
 ## Data and attribution
 
@@ -20,8 +20,8 @@ The generated database in `docs/data/` is published under the Open Database Lice
 
 Requires Python 3.12+ and Node.js (only to run the dependency-free browser-logic tests). There are no package installs or paid services.
 
-    git clone https://github.com/nateofspades/montreal-fun-unlocked.git
-    cd montreal-fun-unlocked
+    git clone https://github.com/nateofspades/Montreal-Fun-Unlocked.git
+    cd Montreal-Fun-Unlocked
     python3 -m unittest discover -s tests -p 'test_*.py' -v
     node tests/test_app.js
 

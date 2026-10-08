@@ -23,7 +23,7 @@ from typing import Any, Callable
 
 API_URL = "https://montreal.hasthings.com/api/events"
 SOURCE_DOCS = "https://montreal.hasthings.com/feeds"
-USER_AGENT = "MontrealFunUnlocked/1.0 (+https://github.com/nateofspades/montreal-fun-unlocked; contact via GitHub)"
+USER_AGENT = "MontrealFunUnlocked/1.0 (+https://github.com/nateofspades/Montreal-Fun-Unlocked; contact via GitHub)"
 CACHE_SECONDS = 300
 REQUEST_DELAY_SECONDS = 2.0
 MAX_ATTEMPTS = 4
