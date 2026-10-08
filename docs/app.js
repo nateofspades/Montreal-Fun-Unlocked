@@ -97,6 +97,10 @@ function titleCase(value) {
   return String(value || '').replaceAll('-', ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
+function matchingCountLabel(count) {
+  return `${count.toLocaleString('en-CA')} matching event${count === 1 ? '' : 's'}`;
+}
+
 function renderCard(event) {
   const venue = event.venue || {};
   const status = event.status || 'unknown';
@@ -140,9 +144,9 @@ function initSite() {
     if (reset) state.visible = PAGE_SIZE;
     state.filtered = applyFilters(state.events, options());
     elements.cards.innerHTML = state.filtered.slice(0, state.visible).map(renderCard).join('');
-    elements.count.textContent = `${state.filtered.length.toLocaleString('en-CA')} matching showtime${state.filtered.length === 1 ? '' : 's'}`;
+    elements.count.textContent = matchingCountLabel(state.filtered.length);
     elements.more.hidden = state.visible >= state.filtered.length;
-    if (!state.filtered.length) elements.cards.innerHTML = '<div class="empty">No showtimes match these filters.</div>';
+    if (!state.filtered.length) elements.cards.innerHTML = '<div class="empty">No events match these filters.</div>';
   }
 
   function populateSelect(select, values, label) {
@@ -176,5 +180,5 @@ function initSite() {
   elements.more.addEventListener('click', () => { state.visible += PAGE_SIZE; render(false); });
 }
 
-if (typeof module !== 'undefined') module.exports = {applyFilters, eventTimeLabel, montrealDateKey, datePresetRange, renderCard};
+if (typeof module !== 'undefined') module.exports = {applyFilters, eventTimeLabel, montrealDateKey, datePresetRange, renderCard, matchingCountLabel};
 if (typeof document !== 'undefined') initSite();
