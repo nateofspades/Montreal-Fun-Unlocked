@@ -200,6 +200,18 @@ def validate_dataset(dataset: dict[str, Any], previous: dict[str, Any] | None = 
         raise CollectionError("pagination is not complete")
     if not isinstance(items, list) or not items:
         raise CollectionError("dataset is unexpectedly empty")
+    window = None
+    if "windowFrom" in metadata or "windowTo" in metadata:
+        try:
+            window_from = parse_instant(metadata["windowFrom"])
+            window_to = parse_instant(metadata["windowTo"])
+        except (KeyError, ValueError, TypeError) as error:
+            raise CollectionError("collection window timestamps are missing or invalid") from error
+        if window_from.tzinfo is None or window_to.tzinfo is None:
+            raise CollectionError("collection window timestamps must be timezone-aware")
+        if window_to - window_from != timedelta(days=60) or metadata.get("windowDays") != 60:
+            raise CollectionError("collection window is not exactly 60 days")
+        window = (window_from, window_to)
     ids: set[str] = set()
     previous_night: date | None = None
     previous_known_start: datetime | None = None
@@ -216,6 +228,8 @@ def validate_dataset(dataset: dict[str, Any], previous: dict[str, Any] | None = 
             raise CollectionError(f"invalid startsAt for {event_id}") from error
         if starts_at.tzinfo is None:
             raise CollectionError(f"startsAt is not timezone-aware for {event_id}")
+        if window and not window[0] <= starts_at <= window[1]:
+            raise CollectionError(f"showtime {event_id} falls outside the requested window")
         try:
             night = date.fromisoformat(event["nightDate"])
         except (ValueError, TypeError) as error:
@@ -331,8 +345,8 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(result))
         return 0
 
-    # Align to a minute boundary. The source can return a showtime at the start
-    # of the requested minute, so this keeps strict range validation stable.
+    # Use a stable minute-aligned request window for cache reuse. The source
+    # may return older boundary rows; enforce exact bounds after pagination.
     start = now.replace(second=0, microsecond=0)
     end = start + timedelta(days=60)
     last_network_request = 0.0
@@ -355,6 +369,12 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         collected = collect_pages(fetch)
+        # The API can return boundary spillover (for example a 14:30 show for
+        # a 14:38 `from`). Finish pagination and validate source rows before
+        # trimming; filtering must never hide malformed data or stop paging.
+        validate_dataset({"metadata": {"paginationComplete": collected.pagination_complete}, "showtimes": collected.items})
+        items = [event for event in collected.items if start <= parse_instant(event["startsAt"]) <= end]
+        out_of_window = len(collected.items) - len(items)
         successful_at = datetime.now(timezone.utc).replace(microsecond=0)
         metadata = {
             "title": "Montreal Fun Unlocked",
@@ -366,7 +386,8 @@ def main(argv: list[str] | None = None) -> int:
             "windowTo": iso_utc(end),
             "windowDays": 60,
             "timezone": "America/Toronto",
-            "uniqueShowtimeCount": len(collected.items),
+            "uniqueShowtimeCount": len(items),
+            "outOfWindowRemoved": out_of_window,
             "duplicatesRemoved": collected.duplicates_removed,
             "pagesRetrieved": collected.pages,
             "offsetsRetrieved": collected.offsets,
@@ -375,9 +396,9 @@ def main(argv: list[str] | None = None) -> int:
             "license": collected.license,
             "attribution": "Data: Has Things (hasthings.com)",
         }
-        dataset = {"metadata": metadata, "showtimes": collected.items}
+        dataset = {"metadata": metadata, "showtimes": items}
         write_dataset_atomically(dataset, json_path, args.output_dir / "events.csv", args.output_dir / "metadata.json", previous=previous)
-        result = {"refreshed": True, "showtimeCount": len(collected.items), "pages": collected.pages, "duplicatesRemoved": collected.duplicates_removed, "lastSuccessfulCollection": metadata["lastSuccessfulCollection"]}
+        result = {"refreshed": True, "showtimeCount": len(items), "pages": collected.pages, "duplicatesRemoved": collected.duplicates_removed, "outOfWindowRemoved": out_of_window, "lastSuccessfulCollection": metadata["lastSuccessfulCollection"]}
         if args.result_file:
             args.result_file.write_text(json.dumps(result) + "\n", encoding="utf-8")
         print(json.dumps(result))

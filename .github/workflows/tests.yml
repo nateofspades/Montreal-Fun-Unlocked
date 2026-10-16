@@ -1,0 +1,48 @@
+name: Test code and validate data
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - 'docs/**'
+      - '!docs/data/**'
+      - '.github/workflows/**'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - 'docs/**'
+      - '!docs/data/**'
+      - '.github/workflows/**'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out proposed code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run Python tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+
+      - name: Run browser-logic tests
+        run: node tests/test_app.js
+
+      - name: Validate checked-in data
+        run: python scripts/validate.py docs/data

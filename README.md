@@ -39,6 +39,7 @@ Then open `http://localhost:8000`.
 
 - Sends explicit UTC `from` and `to` instants spanning exactly 60 days. The API otherwise defaults to tonight.[1]
 - Requests up to 500 rows per page and follows every `nextOffset` sequentially.
+- After full pagination, excludes API spillover showtimes whose `startsAt` falls outside the exact requested interval (`windowFrom <= startsAt <= windowTo`). Records the excluded count as `outOfWindowRemoved` in collection metadata and the result report; spillover does not truncate pagination.
 - Waits at least two seconds between uncached requests.
 - Identifies the project with a descriptive User-Agent.
 - Reuses an on-disk response for the documented five-minute API cache lifetime. Has Things says polling inside that window returns the same bytes.[1]
@@ -46,7 +47,7 @@ Then open `http://localhost:8000`.
 - Stops on persistent access errors; it does not bypass blocks.
 - Deduplicates only by stable showtime `id`, preserving separate performances.
 - Preserves source text exactly in JSON and neutralizes spreadsheet-formula prefixes in CSV cells.
-- Writes through temporary files only after full pagination and validation.
+- Enforces the requested window on retained showtimes and writes through temporary files only after full pagination and validation.
 - Rejects empty results, duplicate IDs, malformed timestamps, invalid local-night ordering, incomplete pagination, mismatched JSON/CSV, and a drop below 60% of a previous dataset of at least 100 showtimes.
 - Preserves the last successful files when collection or validation fails.
 
@@ -71,8 +72,9 @@ The static site works at the repository Pages subpath and uses relative asset/da
 `.github/workflows/refresh-and-deploy.yml` runs at:
 
     0 10 * * *
+    17 12,16,20 * * *
 
-GitHub cron is UTC, so this is **5:00 a.m. fixed EST (UTC−5) year-round**. It runs at **6:00 a.m. Montréal local time while daylight saving time is in effect**; it intentionally does not move with DST. Scheduled GitHub Actions jobs can be delayed during periods of high load, especially near the start of an hour.[2]
+The primary run remains **10:00 UTC / 5:00 a.m. fixed EST (UTC−5) year-round**. It runs at **6:00 a.m. Montréal local time while daylight saving time is in effect**; it intentionally does not move with DST. Backup opportunities at **12:17, 16:17, and 20:17 UTC** retry a failed or missed daily collection. All use the same skip-if-success-today guard without forcing another collection: once that fixed-EST day has a successful dataset, later runs only validate, redeploy, and verify it, without another source collection or data commit. Scheduled GitHub Actions jobs can be delayed or dropped under high load, so these opportunities improve resilience rather than guarantee a particular completion time.[2]
 
 The workflow can also be started manually. Concurrency permits only one collection/deployment run at a time. A successful collection makes exactly one data-refresh commit to `main`, including a changed `lastSuccessfulCollection` timestamp even if event rows are unchanged. The commit identity is:
 
@@ -81,6 +83,16 @@ The workflow can also be started manually. Concurrency permits only one collecti
 That exact GitHub-provided noreply address was verified from commits linked to the account. A same-fixed-EST-day rerun detects the existing successful dataset and does not recollect or create another refresh commit. The manual `force_refresh` option exists only to correct or replace published results.
 
 The same workflow validates, uploads, and deploys the Pages artifact directly with GitHub's supported Pages actions and required permissions; it does not depend on a token-authored push triggering a second workflow.[3] Select `deploy_only` to retry a failed deployment using existing validated data without contacting Has Things.
+
+Each refresh/deploy job has a 20-minute timeout. Diagnostic upload is always attempted for available `collection-result.json` and `validation-report.json` files; cached `.cache/hasthings` source responses are uploaded only on failure. These artifacts are retained for seven days. Files may be absent if a run fails before their producing step.
+
+After Pages reports deployment success, `scripts/verify_deployment.py` fetches public `data/events.json`, `data/events.csv`, and `data/metadata.json` using the deployment action's `page_url`. All three must match the local validated files byte-for-byte; matching metadata alone cannot hide stale event files. Requests use unique cache-busting queries, a no-cache header, and a 15-second timeout. HTTP/network errors or stale responses are retried up to six attempts with ten-second waits between attempts. Exhaustion fails the workflow; success prints the verified SHA-256 hashes. The verifier uses only Python's standard library and can also be run manually:
+
+    python3 scripts/verify_deployment.py --url https://nateofspades.github.io/Montreal-Fun-Unlocked/ --data-dir docs/data
+
+`--attempts`, `--delay`, and `--timeout` configure the bounded retry policy. Verification checks publication against the current local files, not the source feed; validate the local dataset first.
+
+`.github/workflows/tests.yml` runs Python unit tests, Node.js browser-logic tests, and validation of checked-in data on pull requests and pushes to `main` affecting scripts, tests, website code, or workflows. Data-only daily commits do not trigger this separate CI workflow. Repository branch protection must require that check if passing CI is to be enforced before merge.
 
 ## Branch policy
 
@@ -97,7 +109,7 @@ Every successful dataset remains recoverable in Git.
 5. Commit, push, and merge the recovery branch without rewriting history.
 6. Run the workflow manually with `deploy_only: true` to republish without recollection.
 
-A failed refresh leaves `main` and the live website untouched. A failed deployment can be retried with `deploy_only`.
+A collection or validation failure occurs before the data commit and publication. A subsequent push, deployment, or public-verification failure may happen after validated data was committed, and a verification failure does not roll back a Pages deployment. Inspect the failed step, `main`, and available diagnostic artifacts; retry publication with `deploy_only` when the committed dataset is already correct. Normal backup runs also reuse a same-day successful dataset without recollecting.
 
 ## Limitations
 

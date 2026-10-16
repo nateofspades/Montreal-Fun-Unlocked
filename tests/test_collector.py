@@ -45,6 +45,103 @@ def item(item_id, starts_at="2026-10-08T01:00:00.000Z", *, known=True, status="s
 
 
 class CollectorTests(unittest.TestCase):
+    def test_collection_filters_api_window_spillover_after_all_pages(self):
+        # Exact lower-bound spillover from the failed Oct 16 production run.
+        from scripts.collect import main
+        from scripts.validate import validate_artifacts
+        start = datetime(2026, 10, 16, 14, 38, tzinfo=timezone.utc)
+        class Clock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return start
+        rows = [
+            item("b9b59942-7434-4982-86c2-85d4bd89364d", "2026-10-16T14:30:00Z"),
+            item("lower-bound", "2026-10-16T14:38:00Z"),
+            item("inside", "2026-10-16T15:00:00Z"),
+            item("upper-bound", "2026-12-15T14:38:00Z"),
+            item("after-window", "2026-12-15T14:38:01Z"),
+        ]
+        for row in rows:
+            row["nightDate"] = row["startsAt"][:10]
+        pages = {
+            0: {"items": rows[:3], "offset": 0, "nextOffset": 3},
+            3: {"items": rows[3:], "offset": 3, "nextOffset": None},
+        }
+        requested = []
+        def request(url, _cache_dir):
+            from urllib.parse import parse_qs, urlsplit
+            offset = int(parse_qs(urlsplit(url).query)["offset"][0])
+            requested.append(offset)
+            return pages[offset]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            with patch("scripts.collect.datetime", Clock), patch("scripts.collect.request_json", side_effect=request), patch("scripts.collect.time.sleep"):
+                self.assertEqual(main(["--output-dir", tmp, "--result-file", str(root / "result.json")]), 0)
+            report = validate_artifacts(root)
+            dataset = json.loads((root / "events.json").read_text())
+            self.assertEqual([e["id"] for e in dataset["showtimes"]], ["lower-bound", "inside", "upper-bound"])
+            self.assertEqual(dataset["metadata"]["outOfWindowRemoved"], 2)
+            self.assertEqual(json.loads((root / "result.json").read_text())["outOfWindowRemoved"], 2)
+            self.assertEqual(report["showtimeCount"], 3)
+        self.assertEqual(requested, [0, 3])
+
+    def test_atomic_write_rejects_out_of_window_before_replacing_files(self):
+        for instant in ("2026-10-08T00:00:00Z", "2026-12-07T00:01:01Z"):
+            with self.subTest(instant=instant), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                paths = [root / name for name in ("events.json", "events.csv", "metadata.json")]
+                for path in paths:
+                    path.write_text("previous publication")
+                dataset = {"metadata": {"paginationComplete": True,
+                    "windowFrom": "2026-10-08T00:01:00Z", "windowTo": "2026-12-07T00:01:00Z", "windowDays": 60},
+                    "showtimes": [item("spillover", instant)]}
+                with self.assertRaisesRegex(CollectionError, "outside the requested window"):
+                    write_dataset_atomically(dataset, *paths)
+                self.assertTrue(all(path.read_text() == "previous publication" for path in paths))
+
+    def test_spillover_filter_never_publishes_empty_or_malformed_data(self):
+        from scripts.collect import main
+        cases = [item("old", "2000-01-01T00:00:00Z"), item("bad", "not-a-timestamp")]
+        for event in cases:
+            with self.subTest(event=event["id"]), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                paths = [root / name for name in ("events.json", "events.csv", "metadata.json")]
+                for path in paths:
+                    path.write_text("previous publication")
+                page = {"items": [event], "offset": 0, "nextOffset": None}
+                with patch("scripts.collect.request_json", return_value=page):
+                    self.assertEqual(main(["--output-dir", tmp]), 1)
+                self.assertTrue(all(path.read_text() == "previous publication" for path in paths))
+
+    def test_same_day_backup_does_not_recollect_or_rewrite_data(self):
+        from scripts.collect import main
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            previous = {"metadata": {"collectionDateFixedEst": fixed_est_date().isoformat()}}
+            path = root / "events.json"
+            original = json.dumps(previous)
+            path.write_text(original)
+            with patch("scripts.collect.request_json") as request:
+                self.assertEqual(main(["--output-dir", tmp, "--skip-if-success-today"]), 0)
+                request.assert_not_called()
+            self.assertEqual(path.read_text(), original)
+
+    def test_validation_rejects_invalid_window_metadata(self):
+        valid = {"paginationComplete": True, "windowFrom": "2026-10-08T00:00:00Z",
+                 "windowTo": "2026-12-07T00:00:00Z", "windowDays": 60}
+        variants = [
+            {key: value for key, value in valid.items() if key != "windowFrom"},
+            {key: value for key, value in valid.items() if key != "windowTo"},
+            {**valid, "windowFrom": "bad"},
+            {**valid, "windowFrom": "2026-10-08T00:00:00"},
+            {**valid, "windowTo": "2026-12-07T00:00:00"},
+            {**valid, "windowTo": "2026-12-06T00:00:00Z"},
+            {**valid, "windowDays": 59},
+        ]
+        for metadata in variants:
+            with self.subTest(metadata=metadata), self.assertRaises(CollectionError):
+                validate_dataset({"metadata": metadata, "showtimes": [item("a")]})
+
     def test_csv_cells_neutralize_spreadsheet_formulas(self):
         event = item("formula")
         event["title"] = '=HYPERLINK("https://example.test")'
