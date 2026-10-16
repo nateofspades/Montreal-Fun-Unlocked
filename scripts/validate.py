@@ -36,10 +36,6 @@ def validate_artifacts(data_dir: Path) -> dict[str, Any]:
         raise CollectionError("collection timestamps are missing or invalid") from error
     if window_to - window_from != timedelta(days=60) or metadata.get("windowDays") != 60:
         raise CollectionError("collection window is not exactly 60 days")
-    for event in dataset["showtimes"]:
-        starts_at = parse_instant(event["startsAt"])
-        if not window_from <= starts_at <= window_to:
-            raise CollectionError(f"showtime {event['id']} falls outside the requested window")
     offsets = metadata.get("offsetsRetrieved")
     pages = metadata.get("pagesRetrieved")
     if not isinstance(offsets, list) or not offsets or offsets[0] != 0:

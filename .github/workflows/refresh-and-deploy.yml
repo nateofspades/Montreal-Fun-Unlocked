@@ -3,6 +3,7 @@ name: Refresh events and deploy Pages
 on:
   schedule:
     - cron: '0 10 * * *'
+    - cron: '17 12,16,20 * * *'
   workflow_dispatch:
     inputs:
       force_refresh:
@@ -28,6 +29,7 @@ concurrency:
 jobs:
   refresh-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -89,9 +91,36 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Explain a failed refresh
+      - name: Verify public deployed data
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: python scripts/verify_deployment.py --url "$PAGE_URL" --data-dir docs/data
+
+      - name: Upload collection and validation diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: refresh-diagnostics
+          path: |
+            collection-result.json
+            validation-report.json
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload cached source responses on failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-source-responses
+          path: .cache/hasthings
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Explain a failed refresh or deployment
         if: ${{ failure() }}
         run: |
           echo '## Refresh or deployment failed' >> "$GITHUB_STEP_SUMMARY"
-          echo 'No failed or incomplete collection is committed. The previous dataset and Pages deployment remain recoverable from Git.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Retry with deploy_only to republish existing validated data without recollecting.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Collection and validation must succeed before the data commit. A later deployment or public-verification failure can occur after validated data was committed and pushed; inspect the failed step and main before retrying.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Public verification failure does not roll back Pages: public files may still be propagating or differ from the uploaded dataset. Successful datasets remain recoverable from Git.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Inspect the seven-day diagnostics artifacts when available. Use deploy_only to republish existing validated data without recollecting; normal scheduled retries also skip collection after a same-fixed-EST-day success.' >> "$GITHUB_STEP_SUMMARY"
