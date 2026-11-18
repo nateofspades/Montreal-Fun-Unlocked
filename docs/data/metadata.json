@@ -2,13 +2,13 @@
   "title": "Montreal Fun Unlocked",
   "source": "https://montreal.hasthings.com/api/events",
   "sourceDocumentation": "https://montreal.hasthings.com/feeds",
-  "lastSuccessfulCollection": "2026-11-17T18:59:06Z",
-  "collectionDateFixedEst": "2026-11-17",
-  "windowFrom": "2026-11-17T18:58:00Z",
-  "windowTo": "2027-01-16T18:58:00Z",
+  "lastSuccessfulCollection": "2026-11-18T18:42:30Z",
+  "collectionDateFixedEst": "2026-11-18",
+  "windowFrom": "2026-11-18T18:42:00Z",
+  "windowTo": "2027-01-17T18:42:00Z",
   "windowDays": 60,
   "timezone": "America/Toronto",
-  "uniqueShowtimeCount": 1880,
+  "uniqueShowtimeCount": 1888,
   "outOfWindowRemoved": 0,
   "duplicatesRemoved": 0,
   "pagesRetrieved": 4,
@@ -22,7 +22,7 @@
     501,
     1001,
     1501,
-    1880
+    1888
   ],
   "paginationComplete": true,
   "license": {
